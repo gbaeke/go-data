@@ -1,0 +1,19 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: dataapi
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: data
+    spec:
+      containers:
+       - name: data
+         image: gbaeke/go-data
+         ports:
+          - containerPort: 8080
+         env:
+          - name:  MICRO_REGISTRY
+            value:  kubernetes
