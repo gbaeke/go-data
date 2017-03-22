@@ -7,28 +7,30 @@ import (
 
 	device "github.com/gbaeke/go-device/proto"
 	"github.com/gorilla/mux"
-	"github.com/micro/go-micro"
+	"github.com/micro/go-micro/client"
+	"github.com/micro/go-micro/cmd"
 	_ "github.com/micro/go-plugins/registry/kubernetes"
 	"golang.org/x/net/context"
 )
 
 // devSvc is the service for the client
-var devSvc micro.Service
-
-// devSvcClient is the client
-var devSvcClient device.DevSvcClient
+var (
+	cl device.DevSvcClient
+)
 
 func init() {
-	//create the client service & client to check if device is active
-	devSvc = micro.NewService(micro.Name("device.client"))
-	devSvc.Init()
-	devSvcClient = device.NewDevSvcClient("DevSvc", devSvc.Client())
+	// make sure flags are processed
+	cmd.Init()
+
+	// initialise a default client for device service
+	cl = device.NewDevSvcClient("go.micro.srv.device", client.DefaultClient)
 
 }
 
 func deviceActive(d *device.DeviceName) bool {
 	//call Get method from devSvcClient to obtain the device
-	rsp, err := devSvcClient.Get(context.TODO(), d)
+	fmt.Println("Getting device", d.Name)
+	rsp, err := cl.Get(context.TODO(), d)
 	if err != nil {
 		fmt.Println(err)
 		return false
@@ -39,14 +41,21 @@ func deviceActive(d *device.DeviceName) bool {
 
 // DataGet handles /data/deviceid
 func DataGet(w http.ResponseWriter, r *http.Request) {
+	// retrieve variables in request
 	vars := mux.Vars(r)
+
+	// get device name
 	deviceName := vars["device"]
+
+	// print result; no data is actually retrieved
 	fmt.Fprintln(w, "Device active: ", deviceActive(&device.DeviceName{Name: deviceName}))
 	fmt.Fprintln(w, "Oh and, no data for you!")
 }
 
 func main() {
 	router := mux.NewRouter().StrictSlash(true)
+
+	// handler for /data/{device}
 	router.HandleFunc("/data/{device}", DataGet)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
